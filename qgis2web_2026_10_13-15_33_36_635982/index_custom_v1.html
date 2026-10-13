@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B24 照片地圖 — week5_table_tutorial_1</title>
+
+<link rel="stylesheet" href="css/leaflet.css">
+<link rel="stylesheet" href="css/MarkerCluster.css">
+<link rel="stylesheet" href="css/MarkerCluster.Default.css">
+
+<style>
+:root{
+  --bg:#f5f4f1;
+  --panel:#ffffff;
+  --line:#e3dfd7;
+  --line-soft:#efece6;
+  --ink:#211e1b;
+  --muted:#6d6660;
+  --accent:#d85a30;
+  --accent-deep:#993c1d;
+  --green:#3b6d11;
+  --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang HK","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  font-size:13px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+
+#app{
+  display:grid;
+  height:100vh;
+  padding:12px;
+  gap:12px;
+  grid-template-columns:290px minmax(0,1fr) 392px;
+  grid-template-rows:minmax(0,1fr);
+  grid-template-areas:"filters map panel";
+}
+
+.col{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  min-width:0;
+  min-height:0;
+}
+.col-scroll{overflow:auto;overscroll-behavior:contain;padding:14px}
+#col-filters{grid-area:filters}
+#col-panel{grid-area:panel}
+#col-map{grid-area:map;position:relative;overflow:hidden;padding:0}
+#map{position:absolute;inset:0}
+
+.brand{
+  padding:14px 14px 12px;
+  border-bottom:1px solid var(--line-soft);
+}
+.brand h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}
+.brand p{margin:4px 0 0;font-size:11.5px;color:var(--muted)}
+
+.toolbar{display:flex;gap:8px;margin:0 0 10px}
+.toolbar button{
+  flex:1;
+  padding:7px 8px;
+  font:inherit;
+  font-size:12px;
+  color:var(--ink);
+  background:#fbfaf8;
+  border:1px solid var(--line);
+  border-radius:8px;
+  cursor:pointer;
+}
+.toolbar button:hover{background:#f2efe9;border-color:#cfc9be}
+.toolbar button:active{background:#e9e5dd}
+
+.counter{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  margin:0 0 14px;
+  padding:9px 11px;
+  background:#f7f6f2;
+  border:1px solid var(--line-soft);
+  border-radius:8px;
+  font-size:12px;
+  color:var(--muted);
+}
+.counter b{font-size:17px;font-weight:600;color:var(--ink);line-height:1}
+
+.group{margin:0 0 16px}
+.group:last-child{margin-bottom:4px}
+.group > header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin:0 0 6px;
+  padding-bottom:5px;
+  border-bottom:1px solid var(--line-soft);
+}
+.group h3{margin:0;font-size:12px;font-weight:600}
+.group .fn{
+  font-size:10.5px;
+  font-weight:400;
+  color:#9a938b;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.mini{display:flex;gap:4px}
+.mini button{
+  padding:1px 6px;
+  font:inherit;
+  font-size:10.5px;
+  color:var(--muted);
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:5px;
+  cursor:pointer;
+}
+.mini button:hover{background:#f2efe9;color:var(--ink)}
+
+.group ul{list-style:none;margin:0;padding:0}
+.group li{margin:0}
+.group label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:4px 6px;
+  border-radius:6px;
+  cursor:pointer;
+}
+.group label:hover{background:#f7f6f2}
+.group input{
+  flex:0 0 auto;
+  width:13px;height:13px;
+  margin:0;
+  accent-color:var(--accent);
+  cursor:pointer;
+}
+.group .v{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+}
+.group .c{
+  flex:0 0 auto;
+  font-size:11px;
+  color:#9a938b;
+  font-variant-numeric:tabular-nums;
+}
+.group li.off .v{color:#b5aea6}
+.group li.off .c{color:#c9c3bc}
+
+.panel-title{
+  margin:0 0 10px;
+  font-size:13px;
+  font-weight:600;
+}
+.panel-title small{
+  display:block;
+  font-size:11px;
+  font-weight:400;
+  color:var(--muted);
+  margin-top:2px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+
+.empty{
+  padding:26px 16px;
+  text-align:center;
+  color:var(--muted);
+  font-size:12px;
+  background:#f7f6f2;
+  border:1px dashed #ddd8cf;
+  border-radius:10px;
+}
+
+.photo-wrap{
+  position:relative;
+  margin:0 0 12px;
+  border-radius:10px;
+  overflow:hidden;
+  background:#efede8;
+  border:1px solid var(--line-soft);
+}
+.photo-wrap img{
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:46vh;
+  object-fit:contain;
+  background:#efede8;
+}
+.photo-wrap .missing{
+  padding:30px 14px;
+  text-align:center;
+  font-size:12px;
+  color:var(--accent-deep);
+}
+.photo-cap{
+  margin:-6px 0 12px;
+  font-size:11px;
+  color:var(--muted);
+  word-break:break-all;
+}
+
+dl.meta{margin:0;display:grid;grid-template-columns:96px minmax(0,1fr);gap:0}
+dl.meta dt,
+dl.meta dd{
+  margin:0;
+  padding:7px 0;
+  border-top:1px solid var(--line-soft);
+  font-size:12px;
+}
+dl.meta dt{color:var(--muted);padding-right:10px}
+dl.meta dd{word-break:break-word}
+dl.meta .wide{grid-column:1 / -1}
+dl.meta dd.wide{white-space:pre-wrap;line-height:1.6}
+
+.badge{
+  display:inline-block;
+  padding:1px 7px;
+  border-radius:99px;
+  font-size:11px;
+  background:#eef3e6;
+  color:var(--green);
+  border:1px solid #d6e2c4;
+}
+.badge.warn{background:#faeeda;color:#854f0b;border-color:#f0dcb6}
+
+.steps{margin:14px 0 0;padding:0 0 0 16px;color:var(--muted);font-size:11.5px}
+.steps li{margin:0 0 3px}
+
+.reset-btn{
+  width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  font:inherit;font-size:15px;line-height:1;
+  color:var(--ink);
+  background:#fff;
+  border:1px solid rgba(0,0,0,.2);
+  border-radius:4px;
+  cursor:pointer;
+}
+.reset-btn:hover{background:#f2efe9}
+
+@keyframes haloPulse{
+  0%{opacity:.95}
+  50%{opacity:.3}
+  100%{opacity:.95}
+}
+.pulse-halo{animation:haloPulse 1.7s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .pulse-halo{animation:none}
+}
+
+.leaflet-container{font:inherit;font-size:12px;background:#eceae5}
+
+@media (max-width:1140px){
+  #app{
+    grid-template-columns:232px minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr) minmax(0,330px);
+    grid-template-areas:
+      "filters map"
+      "panel panel";
+  }
+  .photo-wrap img{max-height:26vh}
+  dl.meta{grid-template-columns:88px minmax(0,1fr)}
+}
+
+@media (max-width:720px){
+  #app{
+    height:auto;
+    min-height:100vh;
+    padding:10px;
+    gap:10px;
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:auto minmax(0,54vh) auto;
+    grid-template-areas:
+      "filters"
+      "map"
+      "panel";
+  }
+  #col-filters{max-height:46vh;overflow:auto}
+  .photo-wrap img{max-height:52vh}
+  .brand{padding:12px 12px 10px}
+  dl.meta{grid-template-columns:1fr;gap:0}
+  dl.meta dt{padding-bottom:0;border-top:1px solid var(--line-soft)}
+  dl.meta dd{padding-top:2px;border-top:0}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <section class="col col-scroll" id="col-filters">
+    <div class="brand">
+      <h1>照片篩選</h1>
+      <p>B24 · week5_table_tutorial_1</p>
+    </div>
+
+    <div style="padding-top:14px">
+      <div class="toolbar">
+        <button type="button" id="btn-all">Select all</button>
+        <button type="button" id="btn-none">Clear</button>
+      </div>
+
+      <div class="counter">
+        顯示 <b id="cnt-shown">0</b> / <span id="cnt-total">0</span> 筆
+      </div>
+
+      <div id="groups"></div>
+    </div>
+  </section>
+
+  <section class="col" id="col-map">
+    <div id="map"></div>
+  </section>
+
+  <section class="col col-scroll" id="col-panel">
+    <h2 class="panel-title" id="panel-title">照片與詮釋資料</h2>
+    <div id="panel-body">
+      <div class="empty">點選地圖上的照片標記，這裡會顯示照片與相關欄位。</div>
+      <ol class="steps">
+        <li>同一個地點有多張照片時，標記會組成叢集。</li>
+        <li>點叢集放大；到最大縮放後會自動散開，即可逐張點選。</li>
+        <li>左欄可依地點、題材、定位精度篩選。</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+
+<script src="js/leaflet.js"></script>
+<script src="js/leaflet.markercluster.js"></script>
+<script src="data/week5_table_tutorial_1.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var DATA = (window.json_week5_table_tutorial_1 || {}).features || [];
+
+  var FILTER_FIELDS = [
+    { key: "place_name",         label: "地點名稱" },
+    { key: "photo_subject",      label: "照片題材" },
+    { key: "location_precision", label: "定位精度" }
+  ];
+
+  var PANEL_FIELDS = [
+    ["file_name",          "檔案名稱"],
+    ["place_name",         "地點名稱"],
+    ["capture_date",       "拍攝日期"],
+    ["photo_subject",      "照片題材"],
+    ["direction",          "拍攝方向"],
+    ["location_precision", "定位精度"],
+    ["location_source",    "座標來源"],
+    ["notes",              "備註"],
+    ["location_note",      "定位說明"]
+  ];
+
+  var RASTER_URL = "data/omp100_2025_clipped_0.png";
+  var RASTER_BOUNDS = [
+    [22.258713230084844, 113.87447498509259],
+    [22.33364164443673, 113.97475724974854]
+  ];
+
+  var BASE_STYLE = {
+    pane: "panePhotos",
+    radius: 6.5,
+    color: "#3b6d11",
+    weight: 1.5,
+    opacity: 1,
+    fill: true,
+    fillColor: "#97c459",
+    fillOpacity: 0.95,
+    interactive: true
+  };
+
+  var SELECTED_STYLE = {
+    pane: "panePhotos",
+    radius: 11,
+    color: "#ffffff",
+    weight: 2.5,
+    opacity: 1,
+    fill: true,
+    fillColor: "#d85a30",
+    fillOpacity: 1
+  };
+
+  function text(v) {
+    return v === null || v === undefined || v === "" ? "—" : String(v);
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function photoCandidates(p) {
+    var out = [];
+    if (p === null || p === undefined || p === "") return out;
+    var raw = String(p).trim();
+    var derived = raw.replace(/[\/:]/g, "_");
+    var base = raw.split(/[\/\\]/).pop();
+    [derived, base].forEach(function (name) {
+      if (!name) return;
+      var url = "images/" + name;
+      if (out.indexOf(url) === -1) out.push(url);
+    });
+    return out;
+  }
+
+  /* ---------- map ---------- */
+
+  var map = L.map("map", {
+    zoomControl: false,
+    minZoom: 11,
+    maxZoom: 15,
+    attributionControl: true
+  });
+
+  map.attributionControl.setPrefix("");
+
+  L.control.zoom({ position: "topleft" }).addTo(map);
+
+  map.createPane("paneRaster");
+  map.getPane("paneRaster").style.zIndex = 400;
+
+  map.createPane("panePhotos");
+  map.getPane("panePhotos").style.zIndex = 420;
+
+  L.imageOverlay(RASTER_URL, RASTER_BOUNDS, { pane: "paneRaster" }).addTo(map);
+
+  var cluster = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    spiderfyDistanceMultiplier: 2,
+    maxClusterRadius: 55,
+    chunkedLoading: true
+  });
+  cluster.addTo(map);
+
+  /* ---------- records ---------- */
+
+  var records = DATA.map(function (feature, index) {
+    var c = (feature.geometry && feature.geometry.coordinates) || [];
+    var latlng = L.latLng(c[1], c[0]);
+    var layer = L.circleMarker(latlng, BASE_STYLE);
+    var rec = {
+      id: index,
+      feature: feature,
+      props: feature.properties || {},
+      latlng: latlng,
+      layer: layer
+    };
+    layer.bindTooltip(text(rec.props.file_name), { direction: "top", offset: [0, -8] });
+    layer.on("click", function (e) {
+      L.DomEvent.stopPropagation(e);
+      select(rec);
+    });
+    return rec;
+  });
+
+  var allBounds = L.latLngBounds(records.map(function (r) { return r.latlng; }));
+  var boundsGroup = L.featureGroup(records.map(function (r) { return r.layer; }));
+
+  L.Control.ResetView = L.Control.extend({
+    options: { position: "topleft" },
+    onAdd: function () {
+      var wrap = L.DomUtil.create("div", "leaflet-bar");
+      var btn = L.DomUtil.create("button", "reset-btn", wrap);
+      btn.type = "button";
+      btn.title = "重設視圖（顯示全部照片）";
+      btn.setAttribute("aria-label", "重設視圖");
+      btn.innerHTML = "&#8634;";
+      L.DomEvent.on(btn, "click", function (e) {
+        L.DomEvent.stop(e);
+        fitAll();
+      });
+      return wrap;
+    }
+  });
+  map.addControl(new L.Control.ResetView());
+
+  function fitAll() {
+    if (allBounds.isValid()) map.fitBounds(allBounds.pad(0.25), { maxZoom: 15 });
+  }
+
+  /* ---------- filters ---------- */
+
+  var state = {};
+  FILTER_FIELDS.forEach(function (f) {
+    var seen = [];
+    DATA.forEach(function (feat) {
+      var v = text((feat.properties || {})[f.key]);
+      if (seen.indexOf(v) === -1) seen.push(v);
+    });
+    seen.sort(function (a, b) { return a.localeCompare(b, "zh-Hant"); });
+    state[f.key] = { values: seen, checked: seen.slice() };
+  });
+
+  function passes(props) {
+    return FILTER_FIELDS.every(function (f) {
+      return state[f.key].checked.indexOf(text(props[f.key])) !== -1;
+    });
+  }
+
+  var groupsEl = document.getElementById("groups");
+
+  function buildFilters() {
+    FILTER_FIELDS.forEach(function (f) {
+      var st = state[f.key];
+      var counts = {};
+      st.values.forEach(function (v) { counts[v] = 0; });
+      DATA.forEach(function (feat) {
+        var v = text((feat.properties || {})[f.key]);
+        if (counts[v] !== undefined) counts[v] += 1;
+      });
+
+      var sec = document.createElement("section");
+      sec.className = "group";
+      sec.dataset.field = f.key;
+
+      var head = document.createElement("header");
+      head.innerHTML = "<h3>" + esc(f.label) + ' <span class="fn">' + esc(f.key) + "</span></h3>";
+
+      var mini = document.createElement("div");
+      mini.className = "mini";
+      mini.innerHTML = '<button type="button" data-act="all">all</button>' +
+                       '<button type="button" data-act="none">none</button>';
+      head.appendChild(mini);
+      sec.appendChild(head);
+
+      var ul = document.createElement("ul");
+      st.values.forEach(function (v) {
+        var li = document.createElement("li");
+        var id = "f_" + f.key + "_" + st.values.indexOf(v);
+        li.innerHTML =
+          '<label for="' + id + '">' +
+            '<input type="checkbox" id="' + id + '" value="' + esc(v) + '" checked>' +
+            '<span class="v" title="' + esc(v) + '">' + esc(v) + "</span>" +
+            '<span class="c">' + counts[v] + "</span>" +
+          "</label>";
+        li.dataset.value = v;
+        ul.appendChild(li);
+      });
+      sec.appendChild(ul);
+
+      mini.addEventListener("click", function (e) {
+        var act = e.target.getAttribute("data-act");
+        if (!act) return;
+        var on = act === "all";
+        st.checked = on ? st.values.slice() : [];
+        ul.querySelectorAll("input").forEach(function (cb) { cb.checked = on; });
+        syncGroupUI(sec);
+        applyFilters();
+      });
+
+      ul.addEventListener("change", function (e) {
+        if (!e.target.matches("input[type=checkbox]")) return;
+        var v = e.target.closest("li").dataset.value;
+        var i = st.checked.indexOf(v);
+        if (e.target.checked && i === -1) st.checked.push(v);
+        if (!e.target.checked && i !== -1) st.checked.splice(i, 1);
+        syncGroupUI(sec);
+        applyFilters();
+      });
+
+      groupsEl.appendChild(sec);
+    });
+  }
+
+  function syncGroupUI(sec) {
+    var st = state[sec.dataset.field];
+    sec.querySelectorAll("li").forEach(function (li) {
+      li.classList.toggle("off", st.checked.indexOf(li.dataset.value) === -1);
+    });
+  }
+
+  function syncAllGroupsUI() {
+    groupsEl.querySelectorAll(".group").forEach(syncGroupUI);
+  }
+
+  var cntShown = document.getElementById("cnt-shown");
+  var cntTotal = document.getElementById("cnt-total");
+  cntTotal.textContent = DATA.length;
+
+  function applyFilters() {
+    var keep = [];
+    records.forEach(function (rec) {
+      if (passes(rec.props)) keep.push(rec.layer);
+    });
+
+    /* Diff add/remove instead of clearLayers().
+       Leaflet.markercluster's clearLayers() calls e.off("move", ...) without
+       binding `this`, so the handler resolves to undefined and Leaflet warns
+       "wrong listener type: undefined" for every marker. Removing only the
+       layers that actually changed avoids that path entirely. */
+    var current = [];
+    cluster.eachLayer(function (layer) { current.push(layer); });
+    current.forEach(function (layer) {
+      if (keep.indexOf(layer) === -1) cluster.removeLayer(layer);
+    });
+    keep.forEach(function (layer) {
+      if (!cluster.hasLayer(layer)) cluster.addLayer(layer);
+    });
+
+    cntShown.textContent = keep.length;
+
+    if (selected && !passes(selected.props)) clearSelection();
+  }
+
+  document.getElementById("btn-all").addEventListener("click", function () {
+    FILTER_FIELDS.forEach(function (f) {
+      state[f.key].checked = state[f.key].values.slice();
+    });
+    groupsEl.querySelectorAll("input[type=checkbox]").forEach(function (cb) { cb.checked = true; });
+    syncAllGroupsUI();
+    applyFilters();
+  });
+
+  document.getElementById("btn-none").addEventListener("click", function () {
+    FILTER_FIELDS.forEach(function (f) { state[f.key].checked = []; });
+    groupsEl.querySelectorAll("input[type=checkbox]").forEach(function (cb) { cb.checked = false; });
+    syncAllGroupsUI();
+    applyFilters();
+  });
+
+  /* ---------- selection + right panel ---------- */
+
+  var selected = null;
+  var halo = null;
+
+  function clearSelection() {
+    if (selected) selected.layer.setStyle(BASE_STYLE);
+    if (selected) selected.layer.bringToFront();
+    if (halo) { map.removeLayer(halo); halo = null; }
+    selected = null;
+    renderEmpty();
+  }
+
+  function renderEmpty() {
+    document.getElementById("panel-title").innerHTML = "照片與詮釋資料";
+    document.getElementById("panel-body").innerHTML =
+      '<div class="empty">點選地圖上的照片標記，這裡會顯示照片與相關欄位。</div>';
+  }
+
+  function select(rec) {
+    if (selected === rec) return;
+
+    if (selected) selected.layer.setStyle(BASE_STYLE);
+    if (halo) { map.removeLayer(halo); halo = null; }
+
+    selected = rec;
+
+    function showHighlight() {
+      rec.layer.setStyle(SELECTED_STYLE);
+      rec.layer.bringToFront();
+
+      halo = L.circleMarker(rec.latlng, {
+        pane: "panePhotos",
+        radius: 24,
+        color: "#d85a30",
+        weight: 2,
+        opacity: 0.9,
+        fill: true,
+        fillColor: "#f0997b",
+        fillOpacity: 0.3,
+        interactive: false
+      }).addTo(map);
+
+      if (halo._path) halo._path.classList.add("pulse-halo");
+    }
+
+    /* A marker still packed inside a cluster bubble has no live SVG node,
+       so the highlight would be hidden behind the bubble. Ask the cluster
+       group to zoom until this marker is drawn on its own. */
+    var isClustered = !(rec.layer._path && rec.layer._path.parentNode);
+    if (isClustered && typeof cluster.zoomToShowLayer === "function") {
+      cluster.zoomToShowLayer(rec.layer, showHighlight);
+    } else {
+      showHighlight();
+    }
+
+    renderPanel(rec);
+  }
+
+  function renderPanel(rec) {
+    var p = rec.props;
+
+    document.getElementById("panel-title").innerHTML =
+      "照片與詮釋資料<small>" + esc(text(p.file_name)) + "</small>";
+
+    var cands = photoCandidates(p.photo_path);
+    var badgeCls = /exact/i.test(text(p.location_precision)) ? "badge" : "badge warn";
+
+    var html = "";
+    html += '<div class="photo-wrap">';
+    if (cands.length) {
+      html += '<img id="photo-img" alt="' + esc(text(p.file_name)) + '">';
+    } else {
+      html += '<div class="missing">此紀錄沒有 photo_path</div>';
+    }
+    html += "</div>";
+    if (cands.length) {
+      html += '<p class="photo-cap">images/' +
+              esc(decodeURIComponent(cands[0].replace(/^images\//, ""))) + "</p>";
+    }
+
+    html += '<dl class="meta">';
+    PANEL_FIELDS.forEach(function (pair) {
+      var key = pair[0], label = pair[1];
+      var wide = key === "notes" || key === "location_note";
+      var val = text(p[key]);
+      if (key === "location_precision") {
+        val = '<span class="' + badgeCls + '">' + esc(val) + "</span>";
+      } else {
+        val = esc(val);
+      }
+      html += '<dt class="' + (wide ? "wide" : "") + '">' + esc(label) + "</dt>";
+      html += '<dd class="' + (wide ? "wide" : "") + '">' + val + "</dd>";
+    });
+    html += "</dl>";
+
+    document.getElementById("panel-body").innerHTML = html;
+
+    var img = document.getElementById("photo-img");
+    if (!img) return;
+    var i = 0;
+    img.addEventListener("error", function () {
+      i += 1;
+      if (i < cands.length) {
+        img.src = cands[i];
+      } else {
+        var wrap = img.parentNode;
+        wrap.innerHTML = '<div class="missing">照片檔案不存在於 images／<br>' +
+                         esc(cands.join(" ・ ")) + "</div>";
+      }
+    });
+    img.src = cands[0];
+  }
+
+  /* ---------- boot ---------- */
+
+  buildFilters();
+  applyFilters();
+  fitAll();
+
+  window.addEventListener("resize", function () {
+    map.invalidateSize();
+  });
+
+  window.__wk5 = {
+    records: records,
+    state: state,
+    map: map,
+    cluster: cluster,
+    select: function (i) { select(records[i]); },
+    get selected() { return selected; }
+  };
+})();
+</script>
+</body>
+</html>
